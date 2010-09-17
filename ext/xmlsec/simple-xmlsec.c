@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <ruby.h>
  
 #include <libxml/tree.h>
 #include <libxml/xmlmemory.h>
@@ -16,6 +17,8 @@
  
 int initialize() ;
 void SecShutdown() ;
+void cleanup(xmlSecDSigCtxPtr dsigCtx) ;
+void xmlSecErrorCallback(const char* file, int line, const char* func, const char* errorObject, const char* errorSubject, int reason, const char* msg); 
 static int  
 xmlSecAppAddIDAttr(xmlNodePtr node, const xmlChar* attrName, const xmlChar* nodeName, const xmlChar* nsHref) {
     xmlAttrPtr attr, tmpAttr;
@@ -81,29 +84,26 @@ int verify_file(const char* xmlMessage, const char* key) {
   xmlSecDSigCtxPtr dsigCtx = NULL;
   int res = 0;
   initialize();
-    
-  assert(xmlMessage);
-  assert(key);
  
   doc = xmlParseDoc((xmlChar *) xmlMessage) ;
  
   if ((doc == NULL) || (xmlDocGetRootElement(doc) == NULL)){
-    fprintf(stderr, "Error: unable to parse file \"%s\"\n", xmlMessage);
-    goto done;    
+	cleanup(dsigCtx);
+	rb_raise(rb_eRuntimeError, "unable to parse XML document");
   }
     
   /* find start node */
   node = xmlSecFindNode(xmlDocGetRootElement(doc), xmlSecNodeSignature, xmlSecDSigNs);
   if(node == NULL) {
-    fprintf(stdout, "Error: start node not found in \"%s\"\n", xmlMessage);
-    goto done;    
+	cleanup(dsigCtx);
+	rb_raise(rb_eRuntimeError, "could not find start node in XML document");
   }
 
   xmlNodePtr cur = xmlSecGetNextElementNode(doc->children);
   while(cur != NULL) {
 	  if(xmlSecAppAddIDAttr(cur, "ID", "Response", "urn:oasis:names:tc:SAML:2.0:protocol") < 0) {
-		  fprintf(stderr, "Error: failed to add ID attribute");
-goto done;
+		  cleanup(dsigCtx);
+		  rb_raise(rb_eRuntimeError, "could not define ID attribute");
 	  }
 	  cur = xmlSecGetNextElementNode(cur->next);
   }
@@ -111,48 +111,38 @@ goto done;
   /* create signature context */
   dsigCtx = xmlSecDSigCtxCreate(NULL);
   if(dsigCtx == NULL) {
-    fprintf(stdout,"Error: failed to create signature context\n");
-    goto done;
+	cleanup(dsigCtx);
+	rb_raise(rb_eRuntimeError, "could not create signature context");
   }
  
 	/* load public key */
 	dsigCtx->signKey = xmlSecCryptoAppKeyLoadMemory(key, strlen(key), xmlSecKeyDataFormatCertPem, NULL, NULL, NULL);
 	if(dsigCtx->signKey == NULL) {
-		fprintf(stdout,"Error: failed to load public pem key from \"%s\"\n", key);
-		goto done;
+		cleanup(dsigCtx);
+		rb_raise(rb_eRuntimeError, "could not read public pem key %s", key);
 	}
- 
-  /* set key name to the file name, this is just an example! */
-  if(xmlSecKeySetName(dsigCtx->signKey, key) < 0) {
-    fprintf(stdout,"Error: failed to set key name for key from \"%s\"\n", key);
-    goto done;
-  }
 	 
   /* Verify signature */
   if(xmlSecDSigCtxVerify(dsigCtx, node) < 0) {
-    fprintf(stdout,"Error: signature verify\n");
-    goto done;
+	cleanup(dsigCtx);
+	rb_raise(rb_eRuntimeError, "Document does not seem to be in an XMLDsig format");
   }
         
   /* print verification result to stdout */
   if(dsigCtx->status == xmlSecDSigStatusSucceeded) {
-    fprintf(stdout, "Signature is OK\n");
+	  res = 1;
   } else {
-    fprintf(stdout, "Signature is INVALID\n");
+	  res = 0;
   }    
- 
-  /* success */
-  res = 1;
- 
- done:    
-  /* cleanup */
+  cleanup(dsigCtx);
+  return res;
+}
+
+void cleanup(xmlSecDSigCtxPtr dsigCtx) {
   if(dsigCtx != NULL) {
     xmlSecDSigCtxDestroy(dsigCtx);
   }
-    
   SecShutdown() ;
- 
-  return(res);
 }
  
 int initialize()
@@ -202,6 +192,11 @@ int initialize()
     fprintf(stderr, "Error: xmlsec-crypto initialization failed.\n");
     return(-1);
   }
+  xmlSecErrorsSetCallback(xmlSecErrorCallback);
+}
+
+void xmlSecErrorCallback(const char* file, int line, const char* func, const char* errorObject, const char* errorSubject, int reason, const char* msg) {
+	rb_raise(rb_eRuntimeError, "XMLSec error in %s: %s", func, msg);
 }
  
 void SecShutdown()
