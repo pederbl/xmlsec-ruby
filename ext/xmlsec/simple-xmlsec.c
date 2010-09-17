@@ -1,11 +1,3 @@
-/**
- * Simple API to sign a string and return a string using xmlsec
- * All credit for this file goes to John Kemp
- * Unfortunately his site is long gone, but archive.org
- * has preserved it for posterity:
- * http://web.archive.org/web/20060430071452/http://web.mac.com/john.kemp/php-xml-sig.html
- */
-
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
