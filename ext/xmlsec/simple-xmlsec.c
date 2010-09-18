@@ -18,6 +18,8 @@
 int initialize() ;
 void SecShutdown() ;
 void cleanup(xmlSecDSigCtxPtr dsigCtx) ;
+int verify_document(xmlDocPtr doc, const char* key); 
+int verify_file(const char* xmlMessage, const char* key); 
 void xmlSecErrorCallback(const char* file, int line, const char* func, const char* errorObject, const char* errorSubject, int reason, const char* msg); 
 static int  
 xmlSecAppAddIDAttr(xmlNodePtr node, const xmlChar* attrName, const xmlChar* nodeName, const xmlChar* nsHref) {
@@ -80,12 +82,20 @@ xmlSecAppAddIDAttr(xmlNodePtr node, const xmlChar* attrName, const xmlChar* node
 /* functions */
 int verify_file(const char* xmlMessage, const char* key) {
   xmlDocPtr doc = NULL;
+  /* Init libxml and libxslt libraries */
+  xmlInitParser();
+  LIBXML_TEST_VERSION
+    xmlLoadExtDtdDefaultValue = XML_DETECT_IDS | XML_COMPLETE_ATTRS;
+  xmlSubstituteEntitiesDefault(1);
+  doc = xmlParseDoc((xmlChar *) xmlMessage) ;
+  return verify_document(doc, key);
+}
+
+int verify_document(xmlDocPtr doc, const char* key) {
+  initialize();
   xmlNodePtr node = NULL;
   xmlSecDSigCtxPtr dsigCtx = NULL;
   int res = 0;
-  initialize();
- 
-  doc = xmlParseDoc((xmlChar *) xmlMessage) ;
  
   if ((doc == NULL) || (xmlDocGetRootElement(doc) == NULL)){
 	cleanup(dsigCtx);
@@ -147,11 +157,6 @@ void cleanup(xmlSecDSigCtxPtr dsigCtx) {
  
 int initialize()
 {
-  /* Init libxml and libxslt libraries */
-  xmlInitParser();
-  LIBXML_TEST_VERSION
-    xmlLoadExtDtdDefaultValue = XML_DETECT_IDS | XML_COMPLETE_ATTRS;
-  xmlSubstituteEntitiesDefault(1);
             
   /* Init xmlsec library */
   if(xmlSecInit() < 0) {

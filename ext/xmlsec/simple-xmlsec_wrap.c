@@ -17,14 +17,14 @@
 
 /* template workaround for compilers that cannot correctly implement the C++ standard */
 #ifndef SWIGTEMPLATEDISAMBIGUATOR
-# if defined(__SUNPRO_CC)
-#   if (__SUNPRO_CC <= 0x560)
-#     define SWIGTEMPLATEDISAMBIGUATOR template
-#   else
-#     define SWIGTEMPLATEDISAMBIGUATOR 
-#   endif
+# if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x560)
+#  define SWIGTEMPLATEDISAMBIGUATOR template
+# elif defined(__HP_aCC)
+/* Needed even with `aCC -AA' when `aCC -V' reports HP ANSI C++ B3910B A.03.55 */
+/* If we find a maximum version that requires this, the test would be __HP_aCC <= 35500 for A.03.55 */
+#  define SWIGTEMPLATEDISAMBIGUATOR template
 # else
-#   define SWIGTEMPLATEDISAMBIGUATOR 
+#  define SWIGTEMPLATEDISAMBIGUATOR
 # endif
 #endif
 
@@ -50,6 +50,12 @@
 # else
 #   define SWIGUNUSED 
 # endif
+#endif
+
+#ifndef SWIG_MSC_UNSUPPRESS_4505
+# if defined(_MSC_VER)
+#   pragma warning(disable : 4505) /* unreferenced local function has been removed */
+# endif 
 #endif
 
 #ifndef SWIGUNUSEDPARM
@@ -106,6 +112,12 @@
 #if !defined(SWIG_NO_CRT_SECURE_NO_DEPRECATE) && defined(_MSC_VER) && !defined(_CRT_SECURE_NO_DEPRECATE)
 # define _CRT_SECURE_NO_DEPRECATE
 #endif
+
+/* Deal with Microsoft's attempt at deprecating methods in the standard C++ library */
+#if !defined(SWIG_NO_SCL_SECURE_NO_DEPRECATE) && defined(_MSC_VER) && !defined(_SCL_SECURE_NO_DEPRECATE)
+# define _SCL_SECURE_NO_DEPRECATE
+#endif
+
 
 /* -----------------------------------------------------------------------------
  *  This section contains generic SWIG labels for method/variable
@@ -114,14 +126,14 @@
 
 /* template workaround for compilers that cannot correctly implement the C++ standard */
 #ifndef SWIGTEMPLATEDISAMBIGUATOR
-# if defined(__SUNPRO_CC)
-#   if (__SUNPRO_CC <= 0x560)
-#     define SWIGTEMPLATEDISAMBIGUATOR template
-#   else
-#     define SWIGTEMPLATEDISAMBIGUATOR 
-#   endif
+# if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x560)
+#  define SWIGTEMPLATEDISAMBIGUATOR template
+# elif defined(__HP_aCC)
+/* Needed even with `aCC -AA' when `aCC -V' reports HP ANSI C++ B3910B A.03.55 */
+/* If we find a maximum version that requires this, the test would be __HP_aCC <= 35500 for A.03.55 */
+#  define SWIGTEMPLATEDISAMBIGUATOR template
 # else
-#   define SWIGTEMPLATEDISAMBIGUATOR 
+#  define SWIGTEMPLATEDISAMBIGUATOR
 # endif
 #endif
 
@@ -147,6 +159,12 @@
 # else
 #   define SWIGUNUSED 
 # endif
+#endif
+
+#ifndef SWIG_MSC_UNSUPPRESS_4505
+# if defined(_MSC_VER)
+#   pragma warning(disable : 4505) /* unreferenced local function has been removed */
+# endif 
 #endif
 
 #ifndef SWIGUNUSEDPARM
@@ -204,16 +222,22 @@
 # define _CRT_SECURE_NO_DEPRECATE
 #endif
 
+/* Deal with Microsoft's attempt at deprecating methods in the standard C++ library */
+#if !defined(SWIG_NO_SCL_SECURE_NO_DEPRECATE) && defined(_MSC_VER) && !defined(_SCL_SECURE_NO_DEPRECATE)
+# define _SCL_SECURE_NO_DEPRECATE
+#endif
+
+
 /* -----------------------------------------------------------------------------
  * swigrun.swg
  *
- * This file contains generic CAPI SWIG runtime support for pointer
+ * This file contains generic C API SWIG runtime support for pointer
  * type checking.
  * ----------------------------------------------------------------------------- */
 
 /* This should only be incremented when either the layout of swig_type_info changes,
    or for whatever reason, the runtime changes incompatibly */
-#define SWIG_RUNTIME_VERSION "3"
+#define SWIG_RUNTIME_VERSION "4"
 
 /* define SWIG_TYPE_TABLE_NAME as "SWIG_TYPE_TABLE" */
 #ifdef SWIG_TYPE_TABLE
@@ -226,11 +250,11 @@
 
 /*
   You can use the SWIGRUNTIME and SWIGRUNTIMEINLINE macros for
-  creating a static or dynamic library from the swig runtime code.
-  In 99.9% of the cases, swig just needs to declare them as 'static'.
+  creating a static or dynamic library from the SWIG runtime code.
+  In 99.9% of the cases, SWIG just needs to declare them as 'static'.
   
-  But only do this if is strictly necessary, ie, if you have problems
-  with your compiler or so.
+  But only do this if strictly necessary, ie, if you have problems
+  with your compiler or suchlike.
 */
 
 #ifndef SWIGRUNTIME
@@ -248,6 +272,7 @@
 
 /* Flags for pointer conversions */
 #define SWIG_POINTER_DISOWN        0x1
+#define SWIG_CAST_NEW_MEMORY       0x2
 
 /* Flags for new pointer objects */
 #define SWIG_POINTER_OWN           0x1
@@ -256,14 +281,14 @@
 /* 
    Flags/methods for returning states.
    
-   The swig conversion methods, as ConvertPtr, return and integer 
+   The SWIG conversion methods, as ConvertPtr, return and integer 
    that tells if the conversion was successful or not. And if not,
    an error code can be returned (see swigerrors.swg for the codes).
    
    Use the following macros/flags to set or process the returning
    states.
    
-   In old swig versions, you usually write code as:
+   In old versions of SWIG, code such as the following was usually written:
 
      if (SWIG_ConvertPtr(obj,vptr,ty.flags) != -1) {
        // success code
@@ -271,7 +296,7 @@
        //fail code
      }
 
-   Now you can be more explicit as:
+   Now you can be more explicit:
 
     int res = SWIG_ConvertPtr(obj,vptr,ty.flags);
     if (SWIG_IsOK(res)) {
@@ -280,7 +305,7 @@
       // fail code
     }
 
-   that seems to be the same, but now you can also do
+   which is the same really, but now you can also do
 
     Type *ptr;
     int res = SWIG_ConvertPtr(obj,(void **)(&ptr),ty.flags);
@@ -298,7 +323,7 @@
     
    I.e., now SWIG_ConvertPtr can return new objects and you can
    identify the case and take care of the deallocation. Of course that
-   requires also to SWIG_ConvertPtr to return new result values, as
+   also requires SWIG_ConvertPtr to return new result values, such as
 
       int SWIG_ConvertPtr(obj, ptr,...) {         
         if (<obj is ok>) {			       
@@ -316,7 +341,7 @@
 
    Of course, returning the plain '0(success)/-1(fail)' still works, but you can be
    more explicit by returning SWIG_BADOBJ, SWIG_ERROR or any of the
-   swig errors code.
+   SWIG errors code.
 
    Finally, if the SWIG_CASTRANK_MODE is enabled, the result code
    allows to return the 'cast rank', for example, if you have this
@@ -330,9 +355,8 @@
       fooi(1)   // cast rank '0'
 
    just use the SWIG_AddCast()/SWIG_CheckState()
+*/
 
-
- */
 #define SWIG_OK                    (0) 
 #define SWIG_ERROR                 (-1)
 #define SWIG_IsOK(r)               (r >= 0)
@@ -357,7 +381,6 @@
 #define SWIG_DelTmpMask(r)         (SWIG_IsOK(r) ? (r & ~SWIG_TMPOBJMASK) : r)
 #define SWIG_IsTmpObj(r)           (SWIG_IsOK(r) && (r & SWIG_TMPOBJMASK))
 
-
 /* Cast-Rank Mode */
 #if defined(SWIG_CASTRANK_MODE)
 #  ifndef SWIG_TypeRank
@@ -380,18 +403,16 @@ SWIGINTERNINLINE int SWIG_CheckState(int r) {
 #endif
 
 
-
-
 #include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef void *(*swig_converter_func)(void *);
+typedef void *(*swig_converter_func)(void *, int *);
 typedef struct swig_type_info *(*swig_dycast_func)(void **);
 
-/* Structure to store inforomation on one type */
+/* Structure to store information on one type */
 typedef struct swig_type_info {
   const char             *name;			/* mangled name of this type */
   const char             *str;			/* human readable name of this type */
@@ -436,7 +457,7 @@ SWIG_TypeNameComp(const char *f1, const char *l1,
     while ((*f2 == ' ') && (f2 != l2)) ++f2;
     if (*f1 != *f2) return (*f1 > *f2) ? 1 : -1;
   }
-  return (l1 - f1) - (l2 - f2);
+  return (int)((l1 - f1) - (l2 - f2));
 }
 
 /*
@@ -478,48 +499,66 @@ SWIG_TypeCompare(const char *nb, const char *tb) {
 }
 
 
-/* think of this as a c++ template<> or a scheme macro */
-#define SWIG_TypeCheck_Template(comparison, ty)         \
-  if (ty) {                                             \
-    swig_cast_info *iter = ty->cast;                    \
-    while (iter) {                                      \
-      if (comparison) {                                 \
-        if (iter == ty->cast) return iter;              \
-        /* Move iter to the top of the linked list */   \
-        iter->prev->next = iter->next;                  \
-        if (iter->next)                                 \
-          iter->next->prev = iter->prev;                \
-        iter->next = ty->cast;                          \
-        iter->prev = 0;                                 \
-        if (ty->cast) ty->cast->prev = iter;            \
-        ty->cast = iter;                                \
-        return iter;                                    \
-      }                                                 \
-      iter = iter->next;                                \
-    }                                                   \
-  }                                                     \
-  return 0
-
 /*
   Check the typename
 */
 SWIGRUNTIME swig_cast_info *
 SWIG_TypeCheck(const char *c, swig_type_info *ty) {
-  SWIG_TypeCheck_Template(strcmp(iter->type->name, c) == 0, ty);
+  if (ty) {
+    swig_cast_info *iter = ty->cast;
+    while (iter) {
+      if (strcmp(iter->type->name, c) == 0) {
+        if (iter == ty->cast)
+          return iter;
+        /* Move iter to the top of the linked list */
+        iter->prev->next = iter->next;
+        if (iter->next)
+          iter->next->prev = iter->prev;
+        iter->next = ty->cast;
+        iter->prev = 0;
+        if (ty->cast) ty->cast->prev = iter;
+        ty->cast = iter;
+        return iter;
+      }
+      iter = iter->next;
+    }
+  }
+  return 0;
 }
 
-/* Same as previous function, except strcmp is replaced with a pointer comparison */
+/* 
+  Identical to SWIG_TypeCheck, except strcmp is replaced with a pointer comparison
+*/
 SWIGRUNTIME swig_cast_info *
-SWIG_TypeCheckStruct(swig_type_info *from, swig_type_info *into) {
-  SWIG_TypeCheck_Template(iter->type == from, into);
+SWIG_TypeCheckStruct(swig_type_info *from, swig_type_info *ty) {
+  if (ty) {
+    swig_cast_info *iter = ty->cast;
+    while (iter) {
+      if (iter->type == from) {
+        if (iter == ty->cast)
+          return iter;
+        /* Move iter to the top of the linked list */
+        iter->prev->next = iter->next;
+        if (iter->next)
+          iter->next->prev = iter->prev;
+        iter->next = ty->cast;
+        iter->prev = 0;
+        if (ty->cast) ty->cast->prev = iter;
+        ty->cast = iter;
+        return iter;
+      }
+      iter = iter->next;
+    }
+  }
+  return 0;
 }
 
 /*
   Cast a pointer up an inheritance hierarchy
 */
 SWIGRUNTIMEINLINE void *
-SWIG_TypeCast(swig_cast_info *ty, void *ptr) {
-  return ((!ty) || (!ty->converter)) ? ptr : (*ty->converter)(ptr);
+SWIG_TypeCast(swig_cast_info *ty, void *ptr, int *newmemory) {
+  return ((!ty) || (!ty->converter)) ? ptr : (*ty->converter)(ptr, newmemory);
 }
 
 /* 
@@ -792,6 +831,33 @@ SWIG_UnpackDataName(const char *c, void *ptr, size_t sz, const char *name) {
 
 #include <ruby.h>
 
+/* Ruby 1.9.1 has a "memoisation optimisation" when compiling with GCC which
+ * breaks using rb_intern as an lvalue, as SWIG does.  We work around this
+ * issue for now by disabling this.
+ * https://sourceforge.net/tracker/?func=detail&aid=2859614&group_id=1645&atid=101645
+ */
+#ifdef rb_intern
+# undef rb_intern
+#endif
+
+/* Remove global macros defined in Ruby's win32.h */
+#ifdef write
+# undef write
+#endif
+#ifdef read
+# undef read
+#endif
+#ifdef bind
+# undef bind
+#endif
+#ifdef close
+# undef close
+#endif
+#ifdef connect
+# undef connect
+#endif
+
+
 /* Ruby 1.7 defines NUM2LL(), LL2NUM() and ULL2NUM() macros */
 #ifndef NUM2LL
 #define NUM2LL(x) NUM2LONG((x))
@@ -820,12 +886,44 @@ SWIG_UnpackDataName(const char *c, void *ptr, size_t sz, const char *name) {
 #ifndef RSTRING_PTR
 # define RSTRING_PTR(x) RSTRING(x)->ptr
 #endif
+#ifndef RSTRING_END
+# define RSTRING_END(x) (RSTRING_PTR(x) + RSTRING_LEN(x))
+#endif
 #ifndef RARRAY_LEN
 # define RARRAY_LEN(x) RARRAY(x)->len
 #endif
 #ifndef RARRAY_PTR
 # define RARRAY_PTR(x) RARRAY(x)->ptr
 #endif
+#ifndef RFLOAT_VALUE
+# define RFLOAT_VALUE(x) RFLOAT(x)->value
+#endif
+#ifndef DOUBLE2NUM
+# define DOUBLE2NUM(x) rb_float_new(x)
+#endif
+#ifndef RHASH_TBL
+# define RHASH_TBL(x) (RHASH(x)->tbl)
+#endif
+#ifndef RHASH_ITER_LEV
+# define RHASH_ITER_LEV(x) (RHASH(x)->iter_lev)
+#endif
+#ifndef RHASH_IFNONE
+# define RHASH_IFNONE(x) (RHASH(x)->ifnone)
+#endif
+#ifndef RHASH_SIZE
+# define RHASH_SIZE(x) (RHASH(x)->tbl->num_entries)
+#endif
+#ifndef RHASH_EMPTY_P
+# define RHASH_EMPTY_P(x) (RHASH_SIZE(x) == 0)
+#endif
+#ifndef RSTRUCT_LEN
+# define RSTRUCT_LEN(x) RSTRUCT(x)->len
+#endif
+#ifndef RSTRUCT_PTR
+# define RSTRUCT_PTR(x) RSTRUCT(x)->ptr
+#endif
+
+
 
 /*
  * Need to be very careful about how these macros are defined, especially
@@ -887,6 +985,7 @@ SWIG_UnpackDataName(const char *c, void *ptr, size_t sz, const char *name) {
 #define rb_undef_alloc_func(klass) rb_undef_method(CLASS_OF((klass)), "new")
 #endif
 
+static VALUE _mSWIG = Qnil;
 
 /* -----------------------------------------------------------------------------
  * error manipulation
@@ -977,12 +1076,73 @@ SWIG_Ruby_ErrorType(int SWIG_code) {
 }
 
 
+/* This function is called when a user inputs a wrong argument to
+   a method.
+ */
+SWIGINTERN 
+const char* Ruby_Format_TypeError( const char* msg,
+				   const char* type, 
+				   const char* name, 
+				   const int argn,
+				   VALUE input )
+{
+  char buf[128];
+  VALUE str;
+  VALUE asStr;
+  if ( msg && *msg )
+    {
+      str = rb_str_new2(msg);
+    }
+  else
+    {
+      str = rb_str_new(NULL, 0);
+    }
 
+  str = rb_str_cat2( str, "Expected argument " );
+  sprintf( buf, "%d of type ", argn-1 );
+  str = rb_str_cat2( str, buf );
+  str = rb_str_cat2( str, type );
+  str = rb_str_cat2( str, ", but got " );
+  str = rb_str_cat2( str, rb_obj_classname(input) );
+  str = rb_str_cat2( str, " " );
+  asStr = rb_inspect(input);
+  if ( RSTRING_LEN(asStr) > 30 )
+    {
+      str = rb_str_cat( str, StringValuePtr(asStr), 30 );
+      str = rb_str_cat2( str, "..." );
+    }
+  else
+    {
+      str = rb_str_append( str, asStr );
+    }
+
+  if ( name )
+    {
+      str = rb_str_cat2( str, "\n\tin SWIG method '" );
+      str = rb_str_cat2( str, name );
+      str = rb_str_cat2( str, "'" );
+    }
+
+  return StringValuePtr( str );
+}
+
+/* This function is called when an overloaded method fails */
+SWIGINTERN 
+void Ruby_Format_OverloadedError(
+				 const int argc,
+				 const int maxargs,
+				 const char* method, 
+				 const char* prototypes 
+				 )
+{
+  const char* msg = "Wrong # of arguments";
+  if ( argc <= maxargs ) msg = "Wrong arguments";
+  rb_raise(rb_eArgError,"%s for overloaded method '%s'.\n"  
+	   "Possible C/C++ prototypes are:\n%s",
+	   msg, method, prototypes);
+}
 
 /* -----------------------------------------------------------------------------
- * See the LICENSE file for information on copyright, usage and redistribution
- * of SWIG, and the README file for authors - http://www.swig.org/release.html.
- *
  * rubytracking.swg
  *
  * This file contains support for tracking mappings from 
@@ -995,23 +1155,51 @@ SWIG_Ruby_ErrorType(int SWIG_code) {
 extern "C" {
 #endif
 
+/* Ruby 1.8 actually assumes the first case. */
+#if SIZEOF_VOIDP == SIZEOF_LONG
+#  define SWIG2NUM(v) LONG2NUM((unsigned long)v)
+#  define NUM2SWIG(x) (unsigned long)NUM2LONG(x)
+#elif SIZEOF_VOIDP == SIZEOF_LONG_LONG
+#  define SWIG2NUM(v) LL2NUM((unsigned long long)v)
+#  define NUM2SWIG(x) (unsigned long long)NUM2LL(x)
+#else
+#  error sizeof(void*) is not the same as long or long long
+#endif
+
 
 /* Global Ruby hash table to store Trackings from C/C++
-   structs to Ruby Objects. */
-static VALUE swig_ruby_trackings;
+   structs to Ruby Objects. 
+*/
+static VALUE swig_ruby_trackings = Qnil;
 
 /* Global variable that stores a reference to the ruby
    hash table delete function. */
-static ID swig_ruby_hash_delete = 0;
+static ID swig_ruby_hash_delete;
 
 /* Setup a Ruby hash table to store Trackings */
 SWIGRUNTIME void SWIG_RubyInitializeTrackings(void) {
   /* Create a ruby hash table to store Trackings from C++ 
-     objects to Ruby objects.  Also make sure to tell
-     the garabage collector about the hash table. */
-  swig_ruby_trackings = rb_hash_new();
-  rb_gc_register_address(&swig_ruby_trackings);
-  
+     objects to Ruby objects. */
+
+  /* Try to see if some other .so has already created a 
+     tracking hash table, which we keep hidden in an instance var
+     in the SWIG module.
+     This is done to allow multiple DSOs to share the same
+     tracking table.
+  */
+  ID trackings_id = rb_intern( "@__trackings__" );
+  VALUE verbose = rb_gv_get("VERBOSE");
+  rb_gv_set("VERBOSE", Qfalse);
+  swig_ruby_trackings = rb_ivar_get( _mSWIG, trackings_id );
+  rb_gv_set("VERBOSE", verbose);
+
+  /* No, it hasn't.  Create one ourselves */ 
+  if ( swig_ruby_trackings == Qnil )
+    {
+      swig_ruby_trackings = rb_hash_new();
+      rb_ivar_set( _mSWIG, trackings_id, swig_ruby_trackings );
+    }
+
   /* Now store a reference to the hash table delete function
      so that we only have to look it up once.*/
   swig_ruby_hash_delete = rb_intern("delete");
@@ -1024,8 +1212,7 @@ SWIGRUNTIME VALUE SWIG_RubyPtrToReference(void* ptr) {
      a Ruby number object. */
 
   /* Convert the pointer to a Ruby number */
-  unsigned long value = (unsigned long) ptr;
-  return LONG2NUM(value);
+  return SWIG2NUM(ptr);
 }
 
 /* Get a Ruby number to reference an object */
@@ -1035,8 +1222,7 @@ SWIGRUNTIME VALUE SWIG_RubyObjectToReference(VALUE object) {
      a Ruby number object. */
 
   /* Convert the Object to a Ruby number */
-  unsigned long value = (unsigned long) object;
-  return LONG2NUM(value);
+  return SWIG2NUM(object);
 }
 
 /* Get a Ruby object from a previously stored reference */
@@ -1044,9 +1230,8 @@ SWIGRUNTIME VALUE SWIG_RubyReferenceToObject(VALUE reference) {
   /* The provided Ruby number object is a reference
      to the Ruby object we want.*/
 
-  /* First convert the Ruby number to a C number */
-  unsigned long value = NUM2LONG(reference);
-  return (VALUE) value;
+  /* Convert the Ruby number to a Ruby object */
+  return NUM2SWIG(reference);
 }
 
 /* Add a Tracking from a C/C++ struct to a Ruby object */
@@ -1138,15 +1323,21 @@ SWIG_Ruby_AppendOutput(VALUE target, VALUE o) {
   return target;
 }
 
+/* For ruby1.8.4 and earlier. */
+#ifndef RUBY_INIT_STACK
+   RUBY_EXTERN void Init_stack(VALUE* addr);
+#  define RUBY_INIT_STACK \
+   VALUE variable_in_this_stack_frame; \
+   Init_stack(&variable_in_this_stack_frame);
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif
 
 
 /* -----------------------------------------------------------------------------
- * See the LICENSE file for information on copyright, usage and redistribution
- * of SWIG, and the README file for authors - http://www.swig.org/release.html.
- *
  * rubyrun.swg
  *
  * This file contains the runtime support for Ruby modules
@@ -1190,7 +1381,7 @@ SWIG_Ruby_AppendOutput(VALUE target, VALUE o) {
 /* Error manipulation */
 
 #define SWIG_ErrorType(code)                            SWIG_Ruby_ErrorType(code)               
-#define SWIG_Error(code, msg)            		rb_raise(SWIG_Ruby_ErrorType(code), msg)
+#define SWIG_Error(code, msg)            		rb_raise(SWIG_Ruby_ErrorType(code), "%s", msg)
 #define SWIG_fail                        		goto fail				 
 
 
@@ -1202,6 +1393,7 @@ SWIG_Ruby_AppendOutput(VALUE target, VALUE o) {
 #define SWIG_MangleStr(value)                        	SWIG_Ruby_MangleStr(value)		  
 #define SWIG_CheckConvert(value, ty)                 	SWIG_Ruby_CheckConvert(value, ty)	  
 
+#include "assert.h"
 
 /* -----------------------------------------------------------------------------
  * pointers/data manipulation
@@ -1209,9 +1401,6 @@ SWIG_Ruby_AppendOutput(VALUE target, VALUE o) {
 
 #ifdef __cplusplus
 extern "C" {
-#if 0
-} /* cc-mode */
-#endif
 #endif
 
 typedef struct {
@@ -1223,9 +1412,43 @@ typedef struct {
 } swig_class;
 
 
-static VALUE _mSWIG = Qnil;
+/* Global pointer used to keep some internal SWIG stuff */
 static VALUE _cSWIG_Pointer = Qnil;
 static VALUE swig_runtime_data_type_pointer = Qnil;
+
+/* Global IDs used to keep some internal SWIG stuff */
+static ID swig_arity_id = 0;
+static ID swig_call_id  = 0;
+
+/*
+  If your swig extension is to be run within an embedded ruby and has
+  director callbacks, you should set -DRUBY_EMBEDDED during compilation.  
+  This will reset ruby's stack frame on each entry point from the main 
+  program the first time a virtual director function is invoked (in a 
+  non-recursive way).
+  If this is not done, you run the risk of Ruby trashing the stack.
+*/
+
+#ifdef RUBY_EMBEDDED
+
+#  define SWIG_INIT_STACK                            \
+      if ( !swig_virtual_calls ) { RUBY_INIT_STACK } \
+      ++swig_virtual_calls;
+#  define SWIG_RELEASE_STACK --swig_virtual_calls;
+#  define Ruby_DirectorTypeMismatchException(x) \
+          rb_raise( rb_eTypeError, "%s", x ); return c_result;
+
+      static unsigned int swig_virtual_calls = 0;
+
+#else  /* normal non-embedded extension */
+
+#  define SWIG_INIT_STACK
+#  define SWIG_RELEASE_STACK
+#  define Ruby_DirectorTypeMismatchException(x) \
+          throw Swig::DirectorTypeMismatchException( x );
+
+#endif  /* RUBY_EMBEDDED */
+
 
 SWIGRUNTIME VALUE 
 getExceptionClass(void) {
@@ -1258,6 +1481,8 @@ SWIG_Ruby_InitRuntime(void)
 {
   if (_mSWIG == Qnil) {
     _mSWIG = rb_define_module("SWIG");
+    swig_call_id  = rb_intern("call");
+    swig_arity_id = rb_intern("arity");
   }
 }
 
@@ -1281,7 +1506,7 @@ SWIGRUNTIME VALUE
 SWIG_Ruby_NewPointerObj(void *ptr, swig_type_info *type, int flags)
 {
   int own =  flags & SWIG_POINTER_OWN; 
-  
+  int track;
   char *klass_name;
   swig_class *sklass;
   VALUE klass;
@@ -1294,14 +1519,15 @@ SWIG_Ruby_NewPointerObj(void *ptr, swig_type_info *type, int flags)
     sklass = (swig_class *) type->clientdata;
 		
     /* Are we tracking this class and have we already returned this Ruby object? */
-    if (sklass->trackObjects) {
+    track = sklass->trackObjects;
+    if (track) {
       obj = SWIG_RubyInstanceFor(ptr);
       
       /* Check the object's type and make sure it has the correct type.
         It might not in cases where methods do things like 
         downcast methods. */
       if (obj != Qnil) {
-        VALUE value = rb_iv_get(obj, "__swigtype__");
+        VALUE value = rb_iv_get(obj, "@__swigtype__");
         char* type_name = RSTRING_PTR(value);
 				
         if (strcmp(type->name, type_name) == 0) {
@@ -1311,10 +1537,13 @@ SWIG_Ruby_NewPointerObj(void *ptr, swig_type_info *type, int flags)
     }
 
     /* Create a new Ruby object */
-    obj = Data_Wrap_Struct(sklass->klass, VOIDFUNC(sklass->mark), (own ? VOIDFUNC(sklass->destroy) : 0), ptr);
+    obj = Data_Wrap_Struct(sklass->klass, VOIDFUNC(sklass->mark), 
+			   ( own ? VOIDFUNC(sklass->destroy) : 
+			     (track ? VOIDFUNC(SWIG_RubyRemoveTracking) : 0 )
+			     ), ptr);
 
     /* If tracking is on for this class then track this object. */
-    if (sklass->trackObjects) {
+    if (track) {
       SWIG_RubyAddTracking(ptr, obj);
     }
   } else {
@@ -1324,7 +1553,7 @@ SWIG_Ruby_NewPointerObj(void *ptr, swig_type_info *type, int flags)
     free((void *) klass_name);
     obj = Data_Wrap_Struct(klass, 0, 0, ptr);
   }
-  rb_iv_set(obj, "__swigtype__", rb_str_new2(type->name));
+  rb_iv_set(obj, "@__swigtype__", rb_str_new2(type->name));
   
   return obj;
 }
@@ -1336,7 +1565,7 @@ SWIG_Ruby_NewClassInstance(VALUE klass, swig_type_info *type)
   VALUE obj;
   swig_class *sklass = (swig_class *) type->clientdata;
   obj = Data_Wrap_Struct(klass, VOIDFUNC(sklass->mark), VOIDFUNC(sklass->destroy), 0);
-  rb_iv_set(obj, "__swigtype__", rb_str_new2(type->name));
+  rb_iv_set(obj, "@__swigtype__", rb_str_new2(type->name));
   return obj;
 }
 
@@ -1344,7 +1573,7 @@ SWIG_Ruby_NewClassInstance(VALUE klass, swig_type_info *type)
 SWIGRUNTIMEINLINE char *
 SWIG_Ruby_MangleStr(VALUE obj)
 {
-  VALUE stype = rb_iv_get(obj, "__swigtype__");
+  VALUE stype = rb_iv_get(obj, "@__swigtype__");
   return StringValuePtr(stype);
 }
 
@@ -1426,8 +1655,11 @@ SWIG_Ruby_ConvertPtrAndOwn(VALUE obj, void **ptr, swig_type_info *ty, int flags,
     tc = SWIG_TypeCheck(c, ty);
     if (!tc) {
       return SWIG_ERROR;
+    } else {
+      int newmemory = 0;
+      *ptr = SWIG_TypeCast(tc, vptr, &newmemory);
+      assert(!newmemory); /* newmemory handling not yet implemented */
     }
-    *ptr = SWIG_TypeCast(tc, vptr);
   } else {
     *ptr = vptr;
   }
@@ -1508,10 +1740,42 @@ SWIG_Ruby_SetModule(swig_module_info *pointer)
   rb_define_readonly_variable("$swig_runtime_data_type_pointer" SWIG_RUNTIME_VERSION SWIG_TYPE_TABLE_NAME, &swig_runtime_data_type_pointer);
 }
 
+/* This function can be used to check whether a proc or method or similarly
+   callable function has been passed.  Usually used in a %typecheck, like:
+
+   %typecheck(c_callback_t, precedence=SWIG_TYPECHECK_POINTER) {
+        $result = SWIG_Ruby_isCallable( $input );
+   }
+ */
+SWIGINTERN
+int SWIG_Ruby_isCallable( VALUE proc )
+{
+  if ( rb_respond_to( proc, swig_call_id ) == Qtrue )
+    return 1;
+  return 0;
+}
+
+/* This function can be used to check the arity (number of arguments)
+   a proc or method can take.  Usually used in a %typecheck.
+   Valid arities will be that equal to minimal or those < 0
+   which indicate a variable number of parameters at the end.
+ */
+SWIGINTERN
+int SWIG_Ruby_arity( VALUE proc, int minimal )
+{
+  if ( rb_respond_to( proc, swig_arity_id ) == Qtrue )
+    {
+      VALUE num = rb_funcall( proc, swig_arity_id, 0 );
+      int arity = NUM2INT(num);
+      if ( arity < 0 && (arity+1) < -minimal ) return 1;
+      if ( arity == minimal ) return 1;
+      return 1;
+    }
+  return 0;
+}
+
+
 #ifdef __cplusplus
-#if 0
-{ /* cc-mode */
-#endif
 }
 #endif
 
@@ -1526,8 +1790,9 @@ SWIG_Ruby_SetModule(swig_module_info *pointer)
 /* -------- TYPES TABLE (BEGIN) -------- */
 
 #define SWIGTYPE_p_char swig_types[0]
-static swig_type_info *swig_types[2];
-static swig_module_info swig_module = {swig_types, 1, 0, 0, 0, 0};
+#define SWIGTYPE_p_xmlDocPtr swig_types[1]
+static swig_type_info *swig_types[3];
+static swig_module_info swig_module = {swig_types, 2, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -1538,12 +1803,19 @@ static swig_module_info swig_module = {swig_types, 1, 0, 0, 0, 0};
 
 static VALUE mXmlsec;
 
+#define SWIG_RUBY_THREAD_BEGIN_BLOCK
+#define SWIG_RUBY_THREAD_END_BLOCK
+
+
 #define SWIGVERSION 0x020000 
 #define SWIG_VERSION SWIGVERSION
 
 
 #define SWIG_as_voidptr(a) (void *)((const void *)(a)) 
 #define SWIG_as_voidptrptr(a) ((void)SWIG_as_voidptr(*a),(void**)(a)) 
+
+ 
+#include <libxml/tree.h>
 
 
 SWIGINTERN swig_type_info*
@@ -1563,11 +1835,11 @@ SWIGINTERN int
 SWIG_AsCharPtrAndSize(VALUE obj, char** cptr, size_t* psize, int *alloc)
 {
   if (TYPE(obj) == T_STRING) {
-    
-
-
+    #if defined(StringValuePtr)
+    char *cstr = StringValuePtr(obj); 
+    #else
     char *cstr = STR2CSTR(obj);
-    
+    #endif
     size_t size = RSTRING_LEN(obj) + 1;
     if (cptr)  {
       if (alloc) {
@@ -1601,14 +1873,12 @@ SWIG_AsCharPtrAndSize(VALUE obj, char** cptr, size_t* psize, int *alloc)
 
 
 #include <limits.h>
-#ifndef LLONG_MIN
-# define LLONG_MIN	LONG_LONG_MIN
-#endif
-#ifndef LLONG_MAX
-# define LLONG_MAX	LONG_LONG_MAX
-#endif
-#ifndef ULLONG_MAX
-# define ULLONG_MAX	ULONG_LONG_MAX
+#if !defined(SWIG_NO_LLONG_MAX)
+# if !defined(LLONG_MAX) && defined(__GNUC__) && defined (__LONG_LONG_MAX__)
+#   define LLONG_MAX __LONG_LONG_MAX__
+#   define LLONG_MIN (-LLONG_MAX - 1LL)
+#   define ULLONG_MAX (LLONG_MAX * 2ULL + 1ULL)
+# endif
 #endif
 
 
@@ -1639,12 +1909,12 @@ _wrap_verify_file(int argc, VALUE *argv, VALUE self) {
   }
   res1 = SWIG_AsCharPtrAndSize(argv[0], &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "verify_file" "', argument " "1"" of type '" "char const *""'");
+    SWIG_exception_fail(SWIG_ArgError(res1), Ruby_Format_TypeError( "", "char const *","verify_file", 1, argv[0] ));
   }
   arg1 = (char *)(buf1);
   res2 = SWIG_AsCharPtrAndSize(argv[1], &buf2, NULL, &alloc2);
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "verify_file" "', argument " "2"" of type '" "char const *""'");
+    SWIG_exception_fail(SWIG_ArgError(res2), Ruby_Format_TypeError( "", "char const *","verify_file", 2, argv[1] ));
   }
   arg2 = (char *)(buf2);
   result = (int)verify_file((char const *)arg1,(char const *)arg2);
@@ -1659,19 +1929,56 @@ fail:
 }
 
 
+SWIGINTERN VALUE
+_wrap_verify_document(int argc, VALUE *argv, VALUE self) {
+  xmlDocPtr arg1 ;
+  char *arg2 = (char *) 0 ;
+  int res2 ;
+  char *buf2 = 0 ;
+  int alloc2 = 0 ;
+  int result;
+  VALUE vresult = Qnil;
+  
+  if ((argc < 2) || (argc > 2)) {
+    rb_raise(rb_eArgError, "wrong # of arguments(%d for 2)",argc); SWIG_fail;
+  }
+  {
+    xmlDocPtr doc;
+    Data_Get_Struct(argv[0], xmlDocPtr, doc);
+    arg1 = doc;
+  }
+  res2 = SWIG_AsCharPtrAndSize(argv[1], &buf2, NULL, &alloc2);
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), Ruby_Format_TypeError( "", "char const *","verify_document", 2, argv[1] ));
+  }
+  arg2 = (char *)(buf2);
+  result = (int)verify_document(arg1,(char const *)arg2);
+  vresult = SWIG_From_int((int)(result));
+  if (alloc2 == SWIG_NEWOBJ) free((char*)buf2);
+  return vresult;
+fail:
+  if (alloc2 == SWIG_NEWOBJ) free((char*)buf2);
+  return Qnil;
+}
+
+
 
 /* -------- TYPE CONVERSION AND EQUIVALENCE RULES (BEGIN) -------- */
 
 static swig_type_info _swigt__p_char = {"_p_char", "char *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_xmlDocPtr = {"_p_xmlDocPtr", "xmlDocPtr *", 0, 0, (void*)0, 0};
 
 static swig_type_info *swig_type_initial[] = {
   &_swigt__p_char,
+  &_swigt__p_xmlDocPtr,
 };
 
 static swig_cast_info _swigc__p_char[] = {  {&_swigt__p_char, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_xmlDocPtr[] = {  {&_swigt__p_xmlDocPtr, 0, 0, 0},{0, 0, 0, 0}};
 
 static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_char,
+  _swigc__p_xmlDocPtr,
 };
 
 
@@ -1734,7 +2041,7 @@ SWIGRUNTIME void
 SWIG_InitializeModule(void *clientdata) {
   size_t i;
   swig_module_info *module_head, *iter;
-  int found;
+  int found, init;
 
   clientdata = clientdata;
 
@@ -1744,6 +2051,9 @@ SWIG_InitializeModule(void *clientdata) {
     swig_module.type_initial = swig_type_initial;
     swig_module.cast_initial = swig_cast_initial;
     swig_module.next = &swig_module;
+    init = 1;
+  } else {
+    init = 0;
   }
 
   /* Try and load any already created modules */
@@ -1771,6 +2081,12 @@ SWIG_InitializeModule(void *clientdata) {
     swig_module.next = module_head->next;
     module_head->next = &swig_module;
   }
+
+  /* When multiple interpeters are used, a module could have already been initialized in
+     a different interpreter, but not yet have a pointer in this interpreter.
+     In this case, we do not want to continue adding types... everything should be
+     set up already */
+  if (init == 0) return;
 
   /* Now work on filling in swig_module.types */
 #ifdef SWIGRUNTIME_DEBUG
@@ -1924,5 +2240,6 @@ SWIGEXPORT void Init_xmlsec(void) {
   
   SWIG_RubyInitializeTrackings();
   rb_define_module_function(mXmlsec, "verify_file", _wrap_verify_file, -1);
+  rb_define_module_function(mXmlsec, "verify_document", _wrap_verify_document, -1);
 }
 
