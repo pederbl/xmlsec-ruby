@@ -186,12 +186,6 @@ int initialize()
   }
 #endif /* XMLSEC_CRYPTO_DYNAMIC_LOADING */
  
-  /* Init crypto library */
-  if(xmlSecCryptoAppInit(NULL) < 0) {
-    fprintf(stderr, "Error: crypto initialization failed.\n");
-    return(-1);
-  }
- 
   /* Init xmlsec-crypto library */
   if(xmlSecCryptoInit() < 0) {
     fprintf(stderr, "Error: xmlsec-crypto initialization failed.\n");
@@ -208,9 +202,6 @@ void SecShutdown()
 {
   /* Shutdown xmlsec-crypto library */
   xmlSecCryptoShutdown();
-  
-  /* Shutdown crypto library */
-  xmlSecCryptoAppShutdown();
   
   /* Shutdown xmlsec library */
   xmlSecShutdown();

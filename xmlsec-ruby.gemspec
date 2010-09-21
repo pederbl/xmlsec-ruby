@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
 	s.name = 'xmlsec-ruby'
-	s.version = '0.0.3'
+	s.version = '0.0.5'
 	s.summary = 'Ruby bindings for xmlsec1'
 	s.extensions = ['ext/xmlsec/extconf.rb']
 	s.files = ["ext/xmlsec/simple-xmlsec.c", "ext/xmlsec/simple-xmlsec_wrap.c"]
