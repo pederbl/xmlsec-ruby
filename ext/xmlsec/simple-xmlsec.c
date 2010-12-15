@@ -6,6 +6,8 @@
 #include <libxml/tree.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+#include <libxml/xpath.h>
+#include <libxml/xpathInternals.h>
  
 #include <xmlsec/xmlsec.h>
 #include <xmlsec/xmltree.h>
@@ -21,63 +23,56 @@ void cleanup(xmlSecDSigCtxPtr dsigCtx) ;
 int verify_document(xmlDocPtr doc, const char* key); 
 int verify_file(const char* xmlMessage, const char* key); 
 void xmlSecErrorCallback(const char* file, int line, const char* func, const char* errorObject, const char* errorSubject, int reason, const char* msg); 
-static int  
-xmlSecAppAddIDAttr(xmlNodePtr node, const xmlChar* attrName, const xmlChar* nodeName, const xmlChar* nsHref) {
-    xmlAttrPtr attr, tmpAttr;
-    xmlNodePtr cur;
-    xmlChar* id;
-    
-    if((node == NULL) || (attrName == NULL) || (nodeName == NULL)) {
-        return(-1);
-    }
-    
-    /* process children first because it does not matter much but does simplify code */
-    cur = xmlSecGetNextElementNode(node->children);
-    while(cur != NULL) {
-        if(xmlSecAppAddIDAttr(cur, attrName, nodeName, nsHref) < 0) {
-            return(-1);
-        }
-        cur = xmlSecGetNextElementNode(cur->next);
-    }
-    
-    /* node name must match */
-    if(!xmlStrEqual(node->name, nodeName)) {
-        return(0);
-    }
-        
-    /* if nsHref is set then it also should match */    
-    if((nsHref != NULL) && (node->ns != NULL) && (!xmlStrEqual(nsHref, node->ns->href))) {
-        return(0);
-    }
-    
-    /* the attribute with name equal to attrName should exist */
-    for(attr = node->properties; attr != NULL; attr = attr->next) {
-        if(xmlStrEqual(attr->name, attrName)) {
-            break;
-        }
-    }
-    if(attr == NULL) {
-        return(0);
-    }
-    
-    /* and this attr should have a value */
-    id = xmlNodeListGetString(node->doc, attr->children, 1);
-    if(id == NULL) {
-        return(0);
-    }
-    
-    /* check that we don't have same ID already */
-    tmpAttr = xmlGetID(node->doc, id);
-    if(tmpAttr == NULL) {
-        xmlAddID(NULL, node->doc, id, attr);
-    } else if(tmpAttr != attr) {
-        fprintf(stderr, "Error: duplicate ID attribute \"%s\"\n", id);  
-        xmlFree(id);
-        return(-1);
-    }
-    xmlFree(id);
-    return(0);
+int assign_id_attributes(xmlDocPtr doc) {
+  // Assume the ID attribute is one of (ID | Id | id) and tell this to libxml
+  xmlXPathContextPtr xpathCtx = xmlXPathNewContext(doc);
+  if(xpathCtx == NULL) {
+	  xmlFreeDoc(doc); 
+	  rb_raise(rb_eRuntimeError,"Error: unable to create new XPath context\n");
+	  return(-1);
+  }
+  xmlChar* xpathExpr = "//*[@ID | @Id | @id]";
+      
+  xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression(xpathExpr, xpathCtx);
+  if(xpathObj == NULL) {
+	  xmlXPathFreeContext(xpathCtx); 
+	  xmlFreeDoc(doc); 
+	  rb_raise(rb_eRuntimeError,"Error: unable to evaluate xpath expression \"%s\"\n", xpathExpr);
+	  return(-1);
+  }
+  xmlNodeSetPtr nodes = xpathObj->nodesetval;
+  int size = (nodes) ? nodes->nodeNr : 0;
+  char* idNames[] = {"ID", "Id", "id"};
+  xmlAttrPtr attr, tmp;
+  int i,j;
+  for(i = 0; i < size; i++) {
+	  for(j=0; j<3;j++) {
+	  	tmp = xmlHasProp(nodes->nodeTab[i], idNames[j]);
+		if(tmp != NULL)
+			attr = tmp;
+	  }
+	  if(attr == NULL) {
+		xmlXPathFreeContext(xpathCtx); 
+		return(-1);
+  	 }
+	 xmlChar* name = xmlNodeListGetString(doc, attr->children, 1);
+	 if(name == NULL) {
+		xmlXPathFreeContext(xpathCtx); 
+		return(-1);
+	 }
+	 xmlAttrPtr tmp = xmlGetID(doc, name);
+	 if(tmp != NULL) {
+		 xmlFree(name);
+		 return 0;
+	 }
+	 xmlAddID(NULL, doc, name, attr);
+	 xmlFree(name);
+  }
+
+  xmlXPathFreeObject(xpathObj);
+  xmlXPathFreeContext(xpathCtx);
 }
+
  
 /* functions */
 int verify_file(const char* xmlMessage, const char* key) {
@@ -98,25 +93,19 @@ int verify_document(xmlDocPtr doc, const char* key) {
   int res = 0;
  
   if ((doc == NULL) || (xmlDocGetRootElement(doc) == NULL)){
-	cleanup(dsigCtx);
 	rb_raise(rb_eRuntimeError, "unable to parse XML document");
   }
     
   /* find start node */
   node = xmlSecFindNode(xmlDocGetRootElement(doc), xmlSecNodeSignature, xmlSecDSigNs);
   if(node == NULL) {
-	cleanup(dsigCtx);
 	rb_raise(rb_eRuntimeError, "could not find start node in XML document");
   }
 
-  xmlNodePtr cur = xmlSecGetNextElementNode(doc->children);
-  while(cur != NULL) {
-	  if(xmlSecAppAddIDAttr(cur, "ID", "Response", "urn:oasis:names:tc:SAML:2.0:protocol") < 0) {
-		  cleanup(dsigCtx);
-		  rb_raise(rb_eRuntimeError, "could not define ID attribute");
-	  }
-	  cur = xmlSecGetNextElementNode(cur->next);
+  if(assign_id_attributes(doc) < 0) {
+	  rb_raise(rb_eRuntimeError, "Could not find ID attribute in document");
   }
+  
 
   /* create signature context */
   dsigCtx = xmlSecDSigCtxCreate(NULL);

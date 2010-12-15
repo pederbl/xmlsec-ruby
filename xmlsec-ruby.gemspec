@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
 	s.name = 'xmlsec-ruby'
-	s.version = '0.0.5'
+	s.version = '0.0.6'
 	s.summary = 'Ruby bindings for xmlsec1'
 	s.extensions = ['ext/xmlsec/extconf.rb']
 	s.files = ["ext/xmlsec/simple-xmlsec.c", "ext/xmlsec/simple-xmlsec_wrap.c"]
@@ -8,7 +8,7 @@ spec = Gem::Specification.new do |s|
 	s.email = 'victor@coupa.com'
 	s.homepage = 'http://github.com/wonnage/xmlsec-ruby'
 	s.description = <<-EOF
-	xmlsec-ruby is project using SWIG to create ruby bindings
+	xmlsec-ruby is a project using SWIG to create ruby bindings
 	for the xmlsec library (http://www.aleksey.com/xmlsec/). 
 	EOF
 end
