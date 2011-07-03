@@ -159,7 +159,6 @@ int initialize()
     fprintf(stderr, "Error: loaded xmlsec library version is not compatible.\n");
     return(-1);
   }
- 
   /* Load default crypto engine if we are supporting dynamic
    * loading for xmlsec-crypto libraries. Use the crypto library
    * name ("openssl", "nss", etc.) to load corresponding
@@ -180,11 +179,12 @@ int initialize()
     fprintf(stderr, "Error: xmlsec-crypto initialization failed.\n");
     return(-1);
   }
-  xmlSecErrorsSetCallback(xmlSecErrorCallback);
+  //xmlSecErrorsSetCallback(xmlSecErrorCallback);
 }
 
 void xmlSecErrorCallback(const char* file, int line, const char* func, const char* errorObject, const char* errorSubject, int reason, const char* msg) {
-	rb_raise(rb_eRuntimeError, "XMLSec error in %s: %s", func, msg);
+	rb_raise(rb_eRuntimeError, "XMLSec error - file: %s, line: %d, func: %s, errorObject: %s, errorSubject: %s, reason: %d, msg: %s", 
+    file, line, func, errorObject, errorSubject, reason, msg);
 }
  
 void SecShutdown()
